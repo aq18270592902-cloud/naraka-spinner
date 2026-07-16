@@ -31,4 +31,4 @@ node server.js
 
 ## 鍦ㄧ嚎浣撻獙
 
-[GitHub Pages](https://YOUR_USERNAME.github.io/naraka-spinner/)
+[GitHub Pages](https://aq18270592902-cloud.github.io/naraka-spinner/)
