@@ -1,34 +1,38 @@
-# 姘稿姭鏃犻棿 路 鎶€鑳介殢鏈鸿浆鐩?
+# Naraka Bladepoint - Skill Spinner
 
-> 鍗冩満璧涘 路 F1/F2 + V1/V2
+> Qianji Season (2026) - F1/F2 + V1/V2 Random Skill Wheel
 
-涓€涓函鍓嶇鐨勬案鍔棤闂磋嫳闆勬妧鑳介殢鏈烘娊鍙栬浆鐩橈紝鏀寔鍏ㄨ嫳闆?F 鎶€鑳藉拰 V 濂ヤ箟鐨勯殢鏈虹粍鍚堛€?
+A pure front-end Naraka Bladepoint hero skill randomizer. Spin the wheel to get a random hero, F-skill, and V-skill combination.
 
-## 鍔熻兘
+## Features
 
-- 杞洏闅忔満鎶藉彇鑻遍泟
-- 鍗＄墝寮忛€夋嫨 F 鎶€鑳斤紙F1/F2锛?
-- 鍗＄墝寮忛€夋嫨 V 濂ヤ箟锛圴1/V2锛?
-- 涓€閿殢鏈猴紙鑻遍泟 + F + V 鍏ㄩ儴闅忔満锛?
-- 鍘嗗彶璁板綍
+- Spin the wheel to pick a random hero
+- Card-style selection for F-Skills (F1 / F2)
+- Card-style selection for V-Skills (V1 / V2)
+- Quick random: hero + F + V all at once
+- Session history
 
-## 鑻遍泟鍒楄〃锛?6浣嶏級
+## Heroes (16)
 
-瀹佺孩澶溿€佺壒鏈ㄥ皵銆佽喀鍗椼€佸娌ф捣銆佽儭妗冦€佸ぉ娴枫€佸鍒€濮€佸磾涓夊銆佸渤灞便€佹棤灏樸€侀【娓呭瘨銆佹鐢颁俊蹇犮€佹绱悕銆佹矆濡欍€佽儭涓恒€佺敇鐠?
+Ning Hongye, Temulch, Ziping Yin, Justina Gu, Matari, Tianhai, Yoto Hime, Tsuchimikado Kurumi, Valda Cui, Wuchen, Takeda Nobutada, Shayane, Shen Miao, Hu Wei, Yueshan, Gan Xuan
 
-## 杩愯
+## Usage (Local)
 
-```bash
+`ash
 node server.js
-# 璁块棶 http://localhost:8090
-```
+# Open http://localhost:8090
+`
 
-## 鎶€鏈爤
+## Tech Stack
 
-- 绾?HTML + CSS + JavaScript锛堟棤妗嗘灦锛?
-- Canvas API 缁樺埗杞洏
-- Node.js 闈欐€佹枃浠舵湇鍔″櫒
+- Pure HTML + CSS + JavaScript (no framework)
+- Canvas API for the spin wheel
+- Node.js static file server
 
-## 鍦ㄧ嚎浣撻獙
+## Live Demo
 
 [GitHub Pages](https://aq18270592902-cloud.github.io/naraka-spinner/)
+
+## Repository
+
+[GitHub](https://github.com/aq18270592902-cloud/naraka-spinner)
