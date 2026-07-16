@@ -1,38 +1,34 @@
-# Naraka Bladepoint - Skill Spinner
+# 永劫无间 · 技能随机转盘
 
-> Qianji Season (2026) - F1/F2 + V1/V2 Random Skill Wheel
+> 千机赛季 · F1/F2 + V1/V2
 
-A pure front-end Naraka Bladepoint hero skill randomizer. Spin the wheel to get a random hero, F-skill, and V-skill combination.
+纯前端的永劫无间英雄技能随机抽取转盘，支持全英雄 F 技能和 V 奥义的随机组合。
 
-## Features
+## 功能
 
-- Spin the wheel to pick a random hero
-- Card-style selection for F-Skills (F1 / F2)
-- Card-style selection for V-Skills (V1 / V2)
-- Quick random: hero + F + V all at once
-- Session history
+- 🎯 转盘随机抽取英雄
+- 🃏 卡牌式选择 F 技能（F1 / F2）
+- 🃏 卡牌式选择 V 奥义（V1 / V2）
+- ⚡ 一键随机（英雄 + F + V 全部随机）
+- 📜 历史记录
 
-## Heroes (16)
+## 英雄列表（16位）
 
-Ning Hongye, Temulch, Ziping Yin, Justina Gu, Matari, Tianhai, Yoto Hime, Tsuchimikado Kurumi, Valda Cui, Wuchen, Takeda Nobutada, Shayane, Shen Miao, Hu Wei, Yueshan, Gan Xuan
+宁红夜、特木尔、迦南、季沧海、胡桃、天海、妖刀姬、崔三娘、岳山、无尘、顾清寒、武田信忠、殷紫萍、沈妙、胡为、甘璇
 
-## Usage (Local)
+## 本地运行
 
-`ash
+```bash
 node server.js
-# Open http://localhost:8090
-`
+# 访问 http://localhost:8090
+```
 
-## Tech Stack
+## 技术栈
 
-- Pure HTML + CSS + JavaScript (no framework)
-- Canvas API for the spin wheel
-- Node.js static file server
+- 纯 HTML + CSS + JavaScript（无框架）
+- Canvas API 绘制转盘
+- Node.js 静态文件服务器
 
-## Live Demo
+## 在线体验
 
 [GitHub Pages](https://aq18270592902-cloud.github.io/naraka-spinner/)
-
-## Repository
-
-[GitHub](https://github.com/aq18270592902-cloud/naraka-spinner)
