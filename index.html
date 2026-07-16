@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>永劫无间 · 千机赛季 · 技能随机转盘</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;
+  background:#f6f7f9;min-height:100vh;color:#333;
+}
+.wrap{max-width:660px;margin:0 auto;padding:36px 20px 72px}
+
+/* Header */
+.hd{text-align:center;margin-bottom:28px}
+.hd h1{font-size:1.7em;font-weight:900;color:#1a1a2e;letter-spacing:1px}
+.hd h1 em{font-style:normal;color:#e85d3a}
+.hd .sub{color:#aaa;font-size:.84em;margin-top:4px}
+
+/* Steps */
+.steps{display:flex;justify-content:center;gap:10px;margin-bottom:20px}
+.step{
+  min-width:88px;text-align:center;padding:8px 14px;border-radius:22px;
+  font-size:.8em;font-weight:700;background:#edeef0;color:#b0b3b8;
+  transition:all .35s;border:2px solid transparent;
+}
+.step.on{background:#e85d3a;color:#fff;border-color:#e85d3a;box-shadow:0 4px 16px rgba(232,93,58,.2)}
+.step.ok{background:#fff3ef;color:#e85d3a;border-color:#fcd5c8}
+
+/* Phase label */
+.pl{text-align:center;margin-bottom:12px;font-size:.9em;color:#999;min-height:1.4em;font-weight:500}
+.pl b{color:#e85d3a;font-weight:700}
+
+/* Wheel section */
+.ws{display:flex;flex-direction:column;align-items:center;transition:opacity .4s,max-height .5s;max-height:800px;overflow:hidden}
+.ws.hide{opacity:0;max-height:0;pointer-events:none;margin:0;padding:0;overflow:hidden}
+.ww{position:relative;width:520px;height:520px;margin-bottom:22px}
+.ww canvas{width:520px;height:520px;border-radius:50%;display:block;box-shadow:0 8px 40px rgba(0,0,0,.08)}
+.ptr{
+  position:absolute;top:-12px;left:50%;transform:translateX(-50%);z-index:5;
+  width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;
+  border-top:26px solid #e85d3a;filter:drop-shadow(0 3px 8px rgba(232,93,58,.35));
+}
+
+/* Card picker */
+.ps{display:none;flex-direction:column;align-items:center;animation:fadeUp .5s ease}
+.ps.show{display:flex}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.ps-title{font-size:1.3em;font-weight:800;color:#1a1a2e;margin-bottom:4px}
+.ps-sub{font-size:.82em;color:#b0b3b8;margin-bottom:24px}
+.ps-row{display:flex;gap:18px;width:100%;margin-bottom:22px}
+.pk{
+  flex:1;padding:28px 22px;border-radius:18px;position:relative;
+  background:#fff;border:2px solid #edeef0;
+  box-shadow:0 2px 12px rgba(0,0,0,.04);
+  transition:all .5s cubic-bezier(.4,0,.2,1);overflow:hidden;
+}
+.pk.chosen{
+  border-color:#e85d3a;background:#fff8f5;
+  box-shadow:0 6px 28px rgba(232,93,58,.12);
+  transform:translateY(-5px) scale(1.02);
+}
+.pk.dimmed{opacity:.22;transform:scale(.94);filter:grayscale(.4)}
+.pk-tag{font-size:.7em;font-weight:800;letter-spacing:2px;margin-bottom:12px}
+.pk-tag.ft{color:#3b82f6}
+.pk-tag.vt{color:#f97316}
+.pk-name{font-size:1.15em;font-weight:800;color:#1a1a2e;margin-bottom:8px}
+.pk-desc{font-size:.8em;color:#888;line-height:1.7}
+@keyframes shine{0%{left:-120%}100%{left:120%}}
+.pk.chosen::after{
+  content:'';position:absolute;top:0;left:-120%;width:80%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(232,93,58,.06),transparent);
+  animation:shine .7s ease forwards;
+}
+
+/* Buttons */
+.btns{display:flex;gap:14px}
+.btn{
+  padding:14px 36px;font-size:.95em;border:none;border-radius:12px;
+  cursor:pointer;font-weight:700;transition:all .2s;letter-spacing:.5px;
+}
+.btn:active{transform:scale(.95)}
+.btn:disabled{opacity:.25;cursor:default;transform:none}
+.btn-go{background:#e85d3a;color:#fff;box-shadow:0 4px 18px rgba(232,93,58,.2)}
+.btn-go:hover:not(:disabled){background:#d44e2d;box-shadow:0 6px 24px rgba(232,93,58,.3);transform:translateY(-1px)}
+.btn-sub{background:#fff;color:#666;border:2px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.btn-sub:hover{background:#f9fafb;border-color:#d1d5db}
+.btn-rst{
+  display:block;margin:12px auto 0;background:none;color:#ccc;
+  font-size:.75em;padding:5px 14px;border:1px solid #e5e7eb;
+  border-radius:6px;cursor:pointer;transition:all .2s;
+}
+.btn-rst:hover{color:#999;border-color:#ccc}
+
+/* Result panel */
+.res{
+  margin-top:24px;opacity:0;transform:translateY(14px);
+  transition:all .5s cubic-bezier(.4,0,.2,1);pointer-events:none;
+}
+.res.show{opacity:1;transform:translateY(0);pointer-events:auto}
+.r-hero{
+  background:#fff;border-radius:20px;padding:24px;margin-bottom:16px;
+  box-shadow:0 2px 16px rgba(0,0,0,.05);border:1px solid #f0f0f0;
+}
+.r-hero-tag{font-size:.65em;color:#e85d3a;text-transform:uppercase;letter-spacing:2px;font-weight:800;margin-bottom:8px}
+.r-hero-name{font-size:2em;font-weight:900;color:#1a1a2e;line-height:1.2}
+.r-hero-sub{font-size:.88em;color:#aaa;margin-top:4px}
+.r-badge{
+  display:inline-block;font-size:.7em;padding:4px 12px;border-radius:6px;
+  margin-top:10px;font-weight:700;
+}
+.bg-d{background:#fff1f0;color:#e85d3a}
+.bg-t{background:#fff8ef;color:#d97706}
+.bg-s{background:#f0fdf4;color:#16a34a}
+.bg-c{background:#eff6ff;color:#3b82f6}
+.bg-a{background:#faf5ff;color:#9333ea}
+
+.r-skills{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.r-sk{
+  border-radius:18px;padding:22px;background:#fff;
+  box-shadow:0 2px 12px rgba(0,0,0,.04);border:1px solid #f0f0f0;
+}
+.r-sk.fk{border-top:3px solid #3b82f6}
+.r-sk.vk{border-top:3px solid #f97316}
+.r-sk-tag{font-size:.66em;font-weight:800;letter-spacing:2px;margin-bottom:10px}
+.fk .r-sk-tag{color:#3b82f6}
+.vk .r-sk-tag{color:#f97316}
+.r-sk-name{font-size:1.05em;font-weight:800;color:#1a1a2e;margin-bottom:6px}
+.r-sk-desc{font-size:.78em;color:#999;line-height:1.7}
+
+/* Replay */
+.replay{display:none;justify-content:center;margin-top:22px}
+
+/* History */
+.hist{margin-top:32px}
+.hist h3{font-size:.72em;color:#ccc;margin-bottom:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700}
+.hi{
+  font-size:.84em;padding:10px 0;border-bottom:1px solid #f0f0f0;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.hi .hh{font-weight:700;color:#555}
+.hi .hs{color:#bbb;font-size:.88em}
+
+@media(max-width:560px){
+  .ww,.ww canvas{width:340px;height:340px}
+  .r-skills{grid-template-columns:1fr}
+  .ps-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <h1>永劫无间 · <em>技能随机转盘</em></h1>
+    <p class="sub">千机赛季 · F1/F2 + V1/V2</p>
+  </div>
+
+  <div class="steps">
+    <div class="step on" id="s1">① 英雄</div>
+    <div class="step" id="s2">② F技能</div>
+    <div class="step" id="s3">③ V奥义</div>
+  </div>
+
+  <div class="pl" id="pl">转动转盘选择 <b>英雄</b></div>
+
+  <div class="ws" id="ws">
+    <div class="ww">
+      <div class="ptr"></div>
+      <canvas id="c" width="1040" height="1040"></canvas>
+    </div>
+    <div class="btns">
+      <button class="btn btn-go" id="goBtn" onclick="spin()">转一下</button>
+      <button class="btn btn-sub" onclick="quickPick()">一键随机</button>
+    </div>
+    <button class="btn-rst" onclick="resetAll()">重置</button>
+  </div>
+
+  <div class="ps" id="ps"></div>
+  <div class="res" id="res"></div>
+  <div class="replay" id="rp"><button class="btn btn-go" onclick="resetAll()">再来一次</button></div>
+
+  <div class="hist" id="hist" style="display:none">
+    <h3>历史记录</h3>
+    <div id="hl"></div>
+  </div>
+</div>
+
+<script>
+const H=[
+  {name:"宁红夜",title:"赤练蛇·盲剑客",role:"control",
+    f:[{n:"F1 玉碎掌",d:"向前释放内气击退敌人，可打断金霸体蓄力"},{n:"F2 玉碎掌·沉默",d:"攻击前方敌人并沉默8秒，无法使用技能和奥义"}],
+    v:[{n:"V1 月轮·缚",d:"标记周围敌人5秒，结束后眩晕5秒，标记期间禁止飞索"},{n:"V2 月轮·沉默",d:"标记敌人5秒后眩晕2秒，标记期间沉默且无法飞索"}]},
+  {name:"特木尔",title:"苍狼之子",role:"control",
+    f:[{n:"F1 风灵弹",d:"召唤3个风灵弹30秒，按F射击卷起龙卷风，可挡远程"},{n:"F2 风灵弹·追踪",d:"召唤自动追踪敌人的风灵弹，命中卷起龙卷风"}],
+    v:[{n:"V1 风牢",d:"释放风牢15秒，阻挡远程，内部敌人减速无法攻击"},{n:"V2 风牢·活力",d:"风牢12秒，内部耐力恢复速度+100%"}]},
+  {name:"迦南",title:"银鸦",role:"support",
+    f:[{n:"F1 瞬闪",d:"瞬移后攻击+15%持续3秒，蓄力增加距离"},{n:"F2 瞬闪·连",d:"可瞬闪两次，每段25秒CD"}],
+    v:[{n:"V1 隐身刺客",d:"重置技能CD隐身16秒，可背刺"},{n:"V2 隐身·袭卷",d:"隐身14秒，全队飞索伤害+50%"}]},
+  {name:"季沧海",title:"烈焰刀客",role:"damage",
+    f:[{n:"F1 火劲",d:"终极霸体防御架势3秒，格挡后反击施加灼烧"},{n:"F2 火劲·挡",d:"防御架势5秒仅挡近战，反击随格挡次数升级"}],
+    v:[{n:"V1 焚天",d:"击退后移速大幅提升32秒，跑步格挡远程"},{n:"V2 焚天·再装",d:"焚天期间按F消耗怒气使用火劲技能"}]},
+  {name:"胡桃",title:"花之忍者",role:"assist",
+    f:[{n:"F1 治疗光线",d:"连接队友持续回血，左键传送击飞，右键断开互相净化"},{n:"F2 治疗·强化",d:"连接队友+20%攻击力，断开双方+40%攻击1秒"}],
+    v:[{n:"V1 净化圈",d:"15秒治愈圈，每秒恢复300生命+净化"},{n:"V2 净化圈·护甲",d:"每1.5秒恢复300护甲+净化"}]},
+  {name:"天海",title:"金刚大佛",role:"transform",
+    f:[{n:"F1 金钟罩",d:"气护体格挡所有攻击反弹远程"},{n:"F2 金钟罩·反击",d:"格挡后可接反击连招"}],
+    v:[{n:"V1 大佛降世",d:"变身金刚30秒回满血，抓取远处敌人"},{n:"V2 大佛·援",d:"变身金刚可抓队友恢复生命护甲"}]},
+  {name:"妖刀姬",title:"妖刃",role:"damage",
+    f:[{n:"F1 飞刃",d:"掷出旋转刀刃悬停20米，再按F瞬移上挑"},{n:"F2 飞刃·回旋",d:"刀刃悬停10米5秒，再按F横扫高伤害"}],
+    v:[{n:"V1 妖刀·斩",d:"三段斩击递增伤害，透视标记敌人15秒"},{n:"V2 妖刀·回复",d:"三段斩60%伤害转化为治疗"}]},
+  {name:"崔三娘",title:"海龙",role:"control",
+    f:[{n:"F1 水泡",d:"水弹束缚敌人2秒并施加浸湿"},{n:"F2 水泡·阵列",d:"设置多个水弹陷阱，触碰束缚"}],
+    v:[{n:"V1 沧海横流",d:"击退后腾空15秒投掷水矛束缚敌人"},{n:"V2 沧海·无缚",d:"持续投掷多支水矛束缚敌人"}]},
+  {name:"岳山",title:"武威侯",role:"transform",
+    f:[{n:"F1 烈焰冲",d:"冲刺击退敌人，受击中可用"},{n:"F2 烈焰冲·震",d:"长距冲刺正面命中眩晕1秒"}],
+    v:[{n:"V1 将军令",d:"变身神将30秒回满血蓄力攻击"},{n:"V2 将军·跃斩",d:"变身F键跃击击飞，CD缩短至16秒"}]},
+  {name:"无尘",title:"隐族使者",role:"assist",
+    f:[{n:"F1 灵刃",d:"5把灵刃60秒手动发射，格挡近战降耐久"},{n:"F2 灵刃·追踪",d:"5把灵刃自动追踪敌人，消耗耐力"}],
+    v:[{n:"V1 太极传送",d:"设阴阳球传送队友，高血量+攻击低血量减伤"},{n:"V2 太极·换位",d:"与最多3个敌人换位施加易伤+15%"}]},
+  {name:"顾清寒",title:"寒霜之姿",role:"control",
+    f:[{n:"F1 冰盾",d:"冰甲格挡所有攻击4秒，定期恢复护甲"},{n:"F2 冰盾·闪",d:"冰甲3秒格挡所有攻击，受击中可用"}],
+    v:[{n:"V1 冰魄",d:"攻击+5%持续20秒，冲刺冻结敌人1.6秒"},{n:"V2 冰魄·暴风雪",d:"冲刺冻结后暴风雪再冻周围敌人"}]},
+  {name:"武田信忠",title:"鬼之器",role:"support",
+    f:[{n:"F1 鬼夺",d:"10秒警戒，被蓝霸体打时夺刀反击回血"},{n:"F2 鬼夺·冲",d:"冲锋夺取蓝霸体敌人武器反击回血"}],
+    v:[{n:"V1 鬼助",d:"释放鬼灵30秒，按F攻击回血最多3次"},{n:"V2 鬼助·传送",d:"鬼灵击飞敌人后传送过去"}]},
+  {name:"殷紫萍",title:"灵药仙",role:"assist",
+    f:[{n:"F1 自然之触",d:"种灵枝拾取恢复血甲，5秒30%减伤"},{n:"F2 自然·灵感",d:"拾取灵枝获护盾，受击免打断8秒"}],
+    v:[{n:"V1 救赎",d:"全队持续回血+20%治疗增强，被动免死一次"},{n:"V2 救赎·神佑",d:"全队免死护盾+持续恢复护甲"}]},
+  {name:"沈妙",title:"铁炮御手",role:"transform",
+    f:[{n:"F1 枪术",d:"后跳发射爆裂弹范围伤害"},{n:"F2 枪术·散弹",d:"冲刺四周射击4发"}],
+    v:[{n:"V1 机甲狂潮",d:"召唤机甲驾驶30秒扫射炮击"},{n:"V2 机甲·回复",d:"牺牲机甲血量恢复护甲+队友减伤"}]},
+  {name:"胡为",title:"虎啸",role:"damage",
+    f:[{n:"F1 虎啸",d:"攻击周围获30%减伤8秒，每命中+10%"},{n:"F2 虎啸·冲",d:"冲击波蓄力增加伤害和击飞"}],
+    v:[{n:"V1 兽化",d:"化身猛虎35秒虎跃扑击回血"},{n:"V2 兽化·抓",d:"虎化前扑按倒敌人可用两次"}]},
+  {name:"甘璇",title:"司天璇星·监天师",role:"assist",
+    f:[{n:"F1 引星决",d:"星辰之力攻击前方敌人，可穿墙并提供护盾"},{n:"F2 引星决·愈",d:"化为光球治疗队友并击退敌人"}],
+    v:[{n:"V1 天机衍",d:"推演天机大范围控制敌人并为队友增益"},{n:"V2 天机衍·溯",d:"强制回溯目标状态，逆转战局"}]}
+];
+
+const RL={damage:{l:"输出",c:"bg-d"},transform:{l:"变身",c:"bg-t"},support:{l:"支援",c:"bg-s"},control:{l:"控制",c:"bg-c"},assist:{l:"辅助",c:"bg-a"}};
+const CL=["#e74c3c","#e67e22","#f1c40f","#2ecc71","#1abc9c","#3498db","#9b59b6","#e84393","#00b894","#0984e3","#6c5ce7","#d35400","#c0392b","#27ae60","#2980b9","#8e44ad"];
+
+let cvs,cx,ang=0,busy=0,phase="hero",sH=null,sF=null,sV=null,items=[],hist=[],animId=null;
+
+function init(){
+  cvs=document.getElementById("c");cx=cvs.getContext("2d");
+  items=H.map(h=>h.name);draw();
+}
+
+function draw(){
+  const W=cvs.width,R=W/2-10,n=items.length,arc=2*Math.PI/n,c0=W/2;
+  cx.clearRect(0,0,W,W);
+  // outer ring
+  cx.beginPath();cx.arc(c0,c0,R+6,0,2*Math.PI);
+  cx.strokeStyle="rgba(0,0,0,0.06)";cx.lineWidth=3;cx.stroke();
+  // tick marks
+  for(let i=0;i<n;i++){
+    const a=ang+i*arc;
+    cx.save();cx.translate(c0,c0);cx.rotate(a);
+    cx.fillStyle="rgba(0,0,0,0.12)";cx.fillRect(R-2,-2,10,4);
+    cx.restore();
+  }
+  // slices
+  for(let i=0;i<n;i++){
+    const a=ang+i*arc;
+    cx.beginPath();cx.moveTo(c0,c0);cx.arc(c0,c0,R,a,a+arc);cx.closePath();
+    cx.fillStyle=CL[i%CL.length];cx.globalAlpha=.88;cx.fill();cx.globalAlpha=1;
+    cx.strokeStyle="rgba(255,255,255,.4)";cx.lineWidth=2.5;cx.stroke();
+    // text
+    cx.save();cx.translate(c0,c0);cx.rotate(a+arc/2);
+    cx.textAlign="right";cx.fillStyle="#fff";
+    const fs=n>12?28:n>8?32:38;
+    cx.font=`bold ${fs}px "Microsoft YaHei",sans-serif`;
+    cx.shadowColor="rgba(0,0,0,.5)";cx.shadowBlur=4;cx.shadowOffsetX=1;cx.shadowOffsetY=1;
+    let lbl=items[i],mw=R-56;
+    while(cx.measureText(lbl).width>mw&&lbl.length>2)lbl=lbl.slice(0,-1);
+    if(lbl!==items[i])lbl+="…";
+    cx.fillText(lbl,R-32,fs*.35);
+    cx.restore();
+  }
+  // center
+  cx.beginPath();cx.arc(c0,c0,34,0,2*Math.PI);
+  cx.fillStyle="#fff";cx.fill();
+  cx.strokeStyle="rgba(0,0,0,0.08)";cx.lineWidth=2;cx.stroke();
+  cx.fillStyle="#e85d3a";cx.font="bold 11px sans-serif";cx.textAlign="center";
+  cx.fillText("NARAKA",c0,c0+4);
+}
+
+function pickIdx(){
+  const n=items.length,arc=2*Math.PI/n;
+  let a=(-ang-Math.PI/2)%(2*Math.PI);if(a<0)a+=2*Math.PI;
+  return Math.floor(a/arc)%n;
+}
+
+function doSpin(cb){
+  busy=1;document.getElementById("goBtn").disabled=true;
+  const n=items.length,arc=2*Math.PI/n,t=Math.floor(Math.random()*n);
+  const ta=-Math.PI/2-(t*arc+arc/2);
+  const extra=(6+Math.floor(Math.random()*3))*2*Math.PI;
+  const end=ang+extra+(ta-ang%(2*Math.PI)),st=ang;
+  const dur=3800+Math.random()*1400,t0=performance.now();
+  (function f(now){
+    const p=Math.min((now-t0)/dur,1);
+    ang=st+(end-st)*(1-Math.pow(1-p,4.5));
+    draw();
+    if(p<1)animId=requestAnimationFrame(f);
+    else{busy=0;document.getElementById("goBtn").disabled=false;cb()}
+  })(t0);
+}
+
+function spin(){
+  if(busy||phase!=="hero")return;
+  items=H.map(h=>h.name);draw();
+  doSpin(()=>{
+    sH=H[pickIdx()];
+    phase="f";setStep(2);setLabel();
+    setTimeout(()=>showCards("f"),350);
+  });
+}
+
+function showCards(type){
+  document.getElementById("ws").classList.add("hide");
+  const ps=document.getElementById("ps");
+  ps.classList.add("show");
+  const list=type==="f"?sH.f:sH.v;
+  const tc=type==="f"?"ft":"vt";
+  const tt=type==="f"?"F 技能":"V 奥义";
+  const labels=["一","二"];
+  ps.innerHTML=`
+    <div class="ps-title">${sH.name}</div>
+    <div class="ps-sub">随机选择${tt}</div>
+    <div class="ps-row">
+      ${list.map((s,i)=>`
+        <div class="pk" id="pk${i}">
+          <div class="pk-tag ${tc}">${tt}${labels[i]}</div>
+          <div class="pk-name">${s.n}</div>
+          <div class="pk-desc">${s.d}</div>
+        </div>
+      `).join("")}
+    </div>
+    <div class="btns">
+      <button class="btn btn-go" onclick="randomCard('${type}')">随机选择</button>
+    </div>
+    <button class="btn-rst" onclick="resetAll()">重置</button>`;
+  setTimeout(()=>{if(phase===type)randomCard(type)},1500);
+}
+
+function randomCard(type){
+  if(phase!==type)return;
+  const list=type==="f"?sH.f:sH.v;
+  selectCard(type,Math.floor(Math.random()*list.length));
+}
+
+function selectCard(type,idx){
+  if(phase!==type)return;
+  phase="locked";
+  const list=type==="f"?sH.f:sH.v;
+  list.forEach((_,i)=>{
+    const el=document.getElementById("pk"+i);
+    if(i===idx)el.classList.add("chosen");else el.classList.add("dimmed");
+  });
+  if(type==="f"){
+    sF=list[idx];setStep(3);setLabel();
+    setTimeout(()=>{phase="v";showCards("v")},1200);
+  }else{
+    sV=list[idx];setStep(3);setLabel();
+    setTimeout(()=>{
+      showResult();addHist();
+      document.getElementById("rp").style.display="flex";
+      setTimeout(resetFlow,3500);
+    },1000);
+  }
+}
+
+function resetFlow(){
+  phase="hero";sH=sF=sV=null;
+  const ps=document.getElementById("ps");ps.classList.remove("show");ps.innerHTML="";
+  document.getElementById("ws").classList.remove("hide");
+  const r=document.getElementById("res");r.classList.remove("show");r.innerHTML="";
+  document.getElementById("rp").style.display="none";
+  items=H.map(h=>h.name);ang=0;draw();
+  rstStep();setLabel();
+}
+
+function quickPick(){
+  if(busy)return;
+  const hero=H[Math.floor(Math.random()*H.length)];
+  sH=hero;sF=hero.f[Math.floor(Math.random()*hero.f.length)];sV=hero.v[Math.floor(Math.random()*hero.v.length)];
+  phase="done";
+  document.getElementById("ws").classList.add("hide");
+  document.getElementById("ps").classList.remove("show");
+  setStep(3);["s1","s2","s3"].forEach(id=>document.getElementById(id).className="step ok");
+  setLabel();showResult();addHist();
+  document.getElementById("rp").style.display="flex";
+  setTimeout(resetFlow,3000);
+}
+
+function showResult(){
+  const r=RL[sH.role];
+  document.getElementById("res").innerHTML=`
+    <div class="r-hero">
+      <div class="r-hero-tag">英雄</div>
+      <div class="r-hero-name">${sH.name}</div>
+      <div class="r-hero-sub">${sH.title}</div>
+      <span class="r-badge ${r.c}">${r.l}</span>
+    </div>
+    <div class="r-skills">
+      <div class="r-sk fk"><div class="r-sk-tag">F 技能</div><div class="r-sk-name">${sF.n}</div><div class="r-sk-desc">${sF.d}</div></div>
+      <div class="r-sk vk"><div class="r-sk-tag">V 奥义</div><div class="r-sk-name">${sV.n}</div><div class="r-sk-desc">${sV.d}</div></div>
+    </div>`;
+  requestAnimationFrame(()=>document.getElementById("res").classList.add("show"));
+}
+
+function setStep(n){for(let i=1;i<=3;i++){const el=document.getElementById("s"+i);el.className="step "+(i<n?"ok":i===n?"on":"")}}
+function rstStep(){document.getElementById("s1").className="step on";document.getElementById("s2").className="step";document.getElementById("s3").className="step"}
+function setLabel(){
+  const el=document.getElementById("pl");
+  if(phase==="hero")el.innerHTML="转动转盘选择 <b>英雄</b>";
+  else if(phase==="f")el.innerHTML=`为 <b>${sH.name}</b> 选择 F技能`;
+  else if(phase==="v")el.innerHTML=`为 <b>${sH.name}</b> 选择 V奥义`;
+  else el.innerHTML="";
+}
+function addHist(){
+  if(!sH||!sF||!sV)return;
+  hist.unshift({h:sH.name,f:sF.n,v:sV.n});if(hist.length>15)hist.pop();
+  document.getElementById("hist").style.display="block";
+  document.getElementById("hl").innerHTML=hist.map(x=>`<div class="hi"><span class="hh">${x.h}</span><span class="hs">${x.f} / ${x.v}</span></div>`).join("");
+}
+function resetAll(){if(animId)cancelAnimationFrame(animId);busy=0;document.getElementById("goBtn").disabled=false;resetFlow()}
+window.addEventListener("load",init);
+</script>
+</body>
+</html>
