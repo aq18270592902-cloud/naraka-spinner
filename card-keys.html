@@ -101,24 +101,34 @@ function renderTable() {
   keys.forEach(function(k, i) {
     const isBanned = banned.indexOf(k) !== -1;
     const tr = document.createElement("tr");
-    const copyBtn = '<button class="btn-gray" onclick="copyKey(\'' + k + '\', this)" style="margin-left:6px">复制</button>';
+    let btnHtml = '';
     if (isBanned) {
-      tr.innerHTML = '<td style="font-family:Consolas,monospace">' + k + '</td>'
-        + '<td><span class="tag tag-ban">已封禁</span></td>'
-        + '<td style="text-align:right;white-space:nowrap">'
-        + '<button class="btn-green" onclick="unbanKey(\'' + k + '\')">解封</button>' + copyBtn
-        + '</td>';
+      btnHtml = '<button class="btn-green" data-action="unban" data-key="' + k + '">解封</button>'
+        + '<button class="btn-gray" data-action="copy" data-key="' + k + '" style="margin-left:6px">复制</button>';
     } else {
-      tr.innerHTML = '<td style="font-family:Consolas,monospace">' + k + '</td>'
-        + '<td><span class="tag tag-ok">有效</span></td>'
-        + '<td style="text-align:right;white-space:nowrap">'
-        + '<button class="btn-red" onclick="banKey(\'' + k + '\')">封禁</button>'
-        + '<button class="btn-gray" onclick="delKey(' + i + ')" style="margin-left:6px">删除</button>' + copyBtn
-        + '</td>';
+      btnHtml = '<button class="btn-red" data-action="ban" data-key="' + k + '">封禁</button>'
+        + '<button class="btn-gray" data-action="del" data-idx="' + i + '" style="margin-left:6px">删除</button>'
+        + '<button class="btn-gray" data-action="copy" data-key="' + k + '" style="margin-left:6px">复制</button>';
     }
+    tr.innerHTML = '<td style="font-family:Consolas,monospace">' + k + '</td>'
+      + '<td><span class="tag ' + (isBanned ? 'tag-ban' : 'tag-ok') + '">' + (isBanned ? '已封禁' : '有效') + '</span></td>'
+      + '<td style="text-align:right;white-space:nowrap">' + btnHtml + '</td>';
     tb.appendChild(tr);
   });
 }
+
+// 事件委托：统一处理所有按钮点击
+document.getElementById("keyTable").addEventListener("click", function(e) {
+  const btn = e.target;
+  if (btn.tagName !== "BUTTON") return;
+  const action = btn.dataset.action;
+  const key = btn.dataset.key;
+  const idx = parseInt(btn.dataset.idx);
+  if (action === "copy") copyKey(key, btn);
+  else if (action === "ban") banKey(key);
+  else if (action === "unban") unbanKey(key);
+  else if (action === "del") delKey(idx);
+});
 
 function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
 
