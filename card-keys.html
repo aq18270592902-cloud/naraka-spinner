@@ -214,8 +214,8 @@ async function delKey(i) {
   const key = cache.keys[i];
   const oldKeys = cache.keys.slice(), oldBanned = cache.banned.slice();
   cache.keys.splice(i, 1);
-  cache.banned = cache.banned.filter(k => k !== key);
-  renderTable(); showMsg("已删除: " + key, true);
+  if (cache.banned.indexOf(key) === -1) cache.banned.push(key);   // 删除同时封禁：已激活机器立即失效
+  renderTable(); showMsg("已删除并封禁: " + key, true);
   setBusy(true);
   try { await saveData(); }
   catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = oldKeys; cache.banned = oldBanned; renderTable(); }
