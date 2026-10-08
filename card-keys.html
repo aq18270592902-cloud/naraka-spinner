@@ -62,8 +62,8 @@ th { color: #999; font-weight: 400; }
 const _K = ["$2a$10$T/VO.","YqvWDGJlIgV5bnKlu","GgV/qGKDWXOCm5o","W1iAK/afSS1/L2Kq"];
 const MASTER_KEY = _K.join("");
 const BIN_ID = "6ac79499ffd5d1605359275b";
-const BIN_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
-const GET_URL = BIN_URL + "/latest";
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const GET_URL = `${BIN_URL}/latest`;
 let cache = null;   // { keys: [], banned: [] }
 let busy = false;   // 防重复提交
 
@@ -75,7 +75,7 @@ async function loadData() {
     cache = json.record || json;   // jsonbin v3 包装在 record 里，兼容裸格式
     renderTable();
   } catch(e) {
-    document.getElementById("keyTable").innerHTML = '<tr><td colspan="3" class="loading">加载失败: ' + e.message + '</td></tr>';
+    document.getElementById("keyTable").innerHTML = `<tr><td colspan="3" class="loading">加载失败: ${e.message}</td></tr>`;
   }
 }
 
@@ -133,25 +133,31 @@ document.getElementById("keyTable").addEventListener("click", function(e) {
 function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
 
 function copyKey(key, btn) {
-  // 优先用 execCommand（不需要页面聚焦），失败再尝试 clipboard API
-  const ta = document.createElement("textarea");
-  ta.value = key;
-  ta.style.cssText = "position:fixed;top:-99px;left:-99px;opacity:0";
-  document.body.appendChild(ta);
-  ta.select();
-  const ok = document.execCommand("copy");
-  document.body.removeChild(ta);
+  // 点击立即反馈，复制动作后台执行
+  const timer = setTimeout(function() { btn.textContent = "复制"; }, 1500);
+  btn.textContent = "已复制";
 
-  if (ok) {
-    btn.textContent = "已复制";
-    setTimeout(function() { btn.textContent = "复制"; }, 1200);
-  } else {
-    navigator.clipboard.writeText(key).then(function() {
-      btn.textContent = "已复制";
-      setTimeout(function() { btn.textContent = "复制"; }, 1200);
-    }).catch(function() {
+  // 方案1: execCommand（同步，兼容性好）
+  let ok = false;
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = key;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, key.length);
+    ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+  } catch(e) {}
+
+  // 方案2: clipboard API 兜底，两种都失败才提示
+  if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(key).catch(function() {
+      clearTimeout(timer);
       btn.textContent = "失败";
-      setTimeout(function() { btn.textContent = "复制"; }, 1200);
+      setTimeout(function() { btn.textContent = "复制"; }, 1500);
     });
   }
 }
@@ -163,7 +169,7 @@ function setBusy(b) {
 
 function genKey() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const p = function() { return Array.from({length:4}, function() { return chars[Math.floor(Math.random()*chars.length)]; }).join(""); };
+  const p = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
   document.getElementById("newKey").value = "DSPR-" + [p(),p(),p(),p()].join("-");
 }
 
@@ -178,7 +184,7 @@ async function addKey() {
   showMsg("添加成功", true);
   setBusy(true);
   try { await saveData(); }
-  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = cache.keys.filter(function(k) { return k !== key; }); renderTable(); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = cache.keys.filter(k => k !== key); renderTable(); }
   setBusy(false);
 }
 
@@ -195,7 +201,7 @@ async function banKey(key) {
 async function unbanKey(key) {
   if (!cache || busy) return;
   const old = cache.banned;
-  cache.banned = cache.banned.filter(function(k) { return k !== key; });
+  cache.banned = cache.banned.filter(k => k !== key);
   renderTable(); showMsg("已解封: " + key, true);
   setBusy(true);
   try { await saveData(); }
@@ -208,7 +214,7 @@ async function delKey(i) {
   const key = cache.keys[i];
   const oldKeys = cache.keys.slice(), oldBanned = cache.banned.slice();
   cache.keys.splice(i, 1);
-  cache.banned = cache.banned.filter(function(k) { return k !== key; });
+  cache.banned = cache.banned.filter(k => k !== key);
   renderTable(); showMsg("已删除: " + key, true);
   setBusy(true);
   try { await saveData(); }
