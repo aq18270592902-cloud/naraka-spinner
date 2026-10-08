@@ -105,15 +105,36 @@ function renderTable() {
       <td><span class="tag ${isBanned?'tag-ban':'tag-ok'}">${isBanned?'已封禁':'有效'}</span></td>
       <td style="text-align:right;white-space:nowrap">
         ${isBanned
-          ? `<button class="btn-green" onclick="unbanKey('${k}')">解封</button>`
+          ? `<button class="btn-green" onclick="unbanKey('${k}')">解封</button>
+             <button class="btn-gray" onclick="copyKey('${k}', this)" style="margin-left:6px">复制</button>`
           : `<button class="btn-red" onclick="banKey('${k}')">封禁</button>
-             <button class="btn-gray" onclick="delKey(${i})" style="margin-left:6px">删除</button>`}
+             <button class="btn-gray" onclick="delKey(${i})" style="margin-left:6px">删除</button>
+             <button class="btn-gray" onclick="copyKey('${k}', this)" style="margin-left:6px">复制</button>`}
       </td>`;
     tb.appendChild(tr);
   });
 }
 
 function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
+
+function copyKey(key, btn) {
+  navigator.clipboard.writeText(key).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = "已复制";
+    setTimeout(() => btn.textContent = orig, 1200);
+  }).catch(() => {
+    // 剪贴板权限被拒时降级用临时 textarea
+    const ta = document.createElement("textarea");
+    ta.value = key;
+    ta.style.cssText = "position:fixed;top:-99px;left:-99px;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    btn.textContent = "已复制";
+    setTimeout(() => btn.textContent = "复制", 1200);
+  });
+}
 
 function setBusy(b) {
   busy = b;
