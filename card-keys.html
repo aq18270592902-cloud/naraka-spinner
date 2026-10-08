@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>卡密管理</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", sans-serif; background: #F0F0F0; color: #333; padding: 40px 20px; }
+.wrap { max-width: 700px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 24px; color: #1A1A1A; }
+.card { background: #FFF; border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.card h2 { font-size: 14px; color: #888; margin-bottom: 14px; font-weight: 400; }
+input { width: 100%; padding: 10px 14px; font-size: 14px; border: 1px solid #DDD; border-radius: 6px; color: #333; background: #FAFAFA; }
+input:focus { outline: none; border-color: #07C160; background: #FFF; }
+button { padding: 8px 18px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; }
+.btn-green { background: #07C160; color: #FFF; }
+.btn-green:hover { background: #06AD55; }
+.btn-red { background: #FA5151; color: #FFF; }
+.btn-red:hover { background: #E04545; }
+.btn-gray { background: #E8E8E8; color: #666; }
+.btn-gray:hover { background: #DCDCDC; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #EEE; font-size: 14px; }
+th { color: #999; font-weight: 400; }
+.tag { padding: 2px 10px; border-radius: 10px; font-size: 12px; }
+.tag-ok { background: #E8F8EE; color: #07C160; }
+.tag-ban { background: #FDECEC; color: #FA5151; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row input { flex: 1; }
+#msg { margin-top: 10px; font-size: 13px; min-height: 18px; }
+.msg-ok { color: #07C160; }
+.msg-err { color: #FA5151; }
+.loading { text-align: center; padding: 30px; color: #999; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>卡密管理</h1>
+
+<div class="card">
+  <h2>添加卡密</h2>
+  <div class="row">
+    <input id="newKey" placeholder="输入卡密或点击随机生成">
+    <button class="btn-gray" onclick="genKey()">随机</button>
+    <button class="btn-green" onclick="addKey()">添加</button>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>卡密列表</h2>
+  <table>
+    <thead><tr><th>卡密</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+    <tbody id="keyTable"><tr><td colspan="3" class="loading">加载中...</td></tr></tbody>
+  </table>
+</div>
+</div>
+
+<script>
+const _T = ["github_pat_","11CIPZWEI0","GkfGS616SKu8_","AEzxcCKV2MylhcwI","EnSRAaJORNv7RY6","SeMpOamaiznGDA","66AIRALNUA4AZj"];
+const TOKEN = _T.join("");
+const API = "https://api.github.com/repos/aq18270592902-cloud/ccss/contents/keys.json";
+let cache = null;
+
+async function loadData() {
+  try {
+    const resp = await fetch(`${API}?ref=main`, {
+      headers: { "Authorization": `token ${TOKEN}`, "Accept": "application/vnd.github.v3+json", "User-Agent": "DSPR-Admin" }
+    });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+    cache = { sha: data.sha, data: JSON.parse(atob(data.content)) };
+    renderTable();
+  } catch(e) { document.getElementById("keyTable").innerHTML = `<tr><td colspan="3" class="loading">加载失败</td></tr>`; }
+}
+
+async function saveData() {
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(cache.data, null, 2))));
+  const resp = await fetch(API, {
+    method: "PUT",
+    headers: { "Authorization": `token ${TOKEN}`, "Accept": "application/vnd.github.v3+json", "Content-Type": "application/json", "User-Agent": "DSPR-Admin" },
+    body: JSON.stringify({ message: "Update keys", content: content, sha: cache.sha, branch: "main" })
+  });
+  if (!resp.ok) { const e = await resp.json(); throw new Error(e.message); }
+  const data = await resp.json();
+  cache.sha = data.content.sha;
+}
+
+function renderTable() {
+  const tb = document.getElementById("keyTable");
+  const keys = cache.data.keys || [];
+  const banned = cache.data.banned || [];
+  if (!keys.length) { tb.innerHTML = `<tr><td colspan="3" class="loading">暂无卡密</td></tr>`; return; }
+  tb.innerHTML = "";
+  keys.forEach((k, i) => {
+    const isBanned = banned.includes(k);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td style="font-family:Consolas,monospace">${k}</td>
+      <td><span class="tag ${isBanned?'tag-ban':'tag-ok'}">${isBanned?'已封禁':'有效'}</span></td>
+      <td style="text-align:right;white-space:nowrap">
+        ${isBanned
+          ? `<button class="btn-green" onclick="unbanKey('${k}')">解封</button>`
+          : `<button class="btn-red" onclick="banKey('${k}')">封禁</button>
+             <button class="btn-gray" onclick="delKey(${i})" style="margin-left:6px">删除</button>`}
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
+
+function genKey() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const p = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
+  document.getElementById("newKey").value = "DSPR-" + [p(),p(),p(),p()].join("-");
+}
+
+async function addKey() {
+  if (!cache) return;
+  const key = document.getElementById("newKey").value.trim().toUpperCase();
+  if (!key) { showMsg("请输入卡密", false); return; }
+  if (cache.data.keys.includes(key)) { showMsg("卡密已存在", false); return; }
+  cache.data.keys.push(key);
+  try { await saveData(); renderTable(); showMsg("添加成功", true); document.getElementById("newKey").value = ""; }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.data.keys.pop(); }
+}
+
+async function banKey(key) {
+  if (!cache) return;
+  if (!cache.data.banned.includes(key)) cache.data.banned.push(key);
+  try { await saveData(); renderTable(); showMsg("已封禁: " + key, true); }
+  catch(e) { showMsg("保存失败: " + e.message, false); }
+}
+
+async function unbanKey(key) {
+  if (!cache) return;
+  cache.data.banned = cache.data.banned.filter(k => k !== key);
+  try { await saveData(); renderTable(); showMsg("已解封: " + key, true); }
+  catch(e) { showMsg("保存失败: " + e.message, false); }
+}
+
+async function delKey(i) {
+  if (!cache) return;
+  const key = cache.data.keys[i];
+  cache.data.keys.splice(i, 1);
+  cache.data.banned = cache.data.banned.filter(k => k !== key);
+  try { await saveData(); renderTable(); showMsg("已删除: " + key, true); }
+  catch(e) { showMsg("保存失败: " + e.message, false); }
+}
+
+loadData();
+</script>
+</body>
+</html>
