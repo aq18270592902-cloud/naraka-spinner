@@ -62,8 +62,8 @@ th { color: #999; font-weight: 400; }
 const _K = ["$2a$10$T/VO.","YqvWDGJlIgV5bnKlu","GgV/qGKDWXOCm5o","W1iAK/afSS1/L2Kq"];
 const MASTER_KEY = _K.join("");
 const BIN_ID = "6ac79499ffd5d1605359275b";
-const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-const GET_URL = `${BIN_URL}/latest`;
+const BIN_URL = "https://api.jsonbin.io/v3/b/" + BIN_ID;
+const GET_URL = BIN_URL + "/latest";
 let cache = null;   // { keys: [], banned: [] }
 let busy = false;   // 防重复提交
 
@@ -75,7 +75,7 @@ async function loadData() {
     cache = json.record || json;   // jsonbin v3 包装在 record 里，兼容裸格式
     renderTable();
   } catch(e) {
-    document.getElementById("keyTable").innerHTML = `<tr><td colspan="3" class="loading">加载失败: ${e.message}</td></tr>`;
+    document.getElementById("keyTable").innerHTML = '<tr><td colspan="3" class="loading">加载失败: ' + e.message + '</td></tr>';
   }
 }
 
@@ -96,21 +96,26 @@ function renderTable() {
   const tb = document.getElementById("keyTable");
   const keys = cache.keys || [];
   const banned = cache.banned || [];
-  if (!keys.length) { tb.innerHTML = `<tr><td colspan="3" class="loading">暂无卡密</td></tr>`; return; }
+  if (!keys.length) { tb.innerHTML = '<tr><td colspan="3" class="loading">暂无卡密</td></tr>'; return; }
   tb.innerHTML = "";
-  keys.forEach((k, i) => {
-    const isBanned = banned.includes(k);
+  keys.forEach(function(k, i) {
+    const isBanned = banned.indexOf(k) !== -1;
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td style="font-family:Consolas,monospace">${k}</td>
-      <td><span class="tag ${isBanned?'tag-ban':'tag-ok'}">${isBanned?'已封禁':'有效'}</span></td>
-      <td style="text-align:right;white-space:nowrap">
-        ${isBanned
-          ? `<button class="btn-green" onclick="unbanKey('${k}')">解封</button>
-             <button class="btn-gray" onclick="copyKey('${k}', this)" style="margin-left:6px">复制</button>`
-          : `<button class="btn-red" onclick="banKey('${k}')">封禁</button>
-             <button class="btn-gray" onclick="delKey(${i})" style="margin-left:6px">删除</button>
-             <button class="btn-gray" onclick="copyKey('${k}', this)" style="margin-left:6px">复制</button>`}
-      </td>`;
+    const copyBtn = '<button class="btn-gray" onclick="copyKey(\'' + k + '\', this)" style="margin-left:6px">复制</button>';
+    if (isBanned) {
+      tr.innerHTML = '<td style="font-family:Consolas,monospace">' + k + '</td>'
+        + '<td><span class="tag tag-ban">已封禁</span></td>'
+        + '<td style="text-align:right;white-space:nowrap">'
+        + '<button class="btn-green" onclick="unbanKey(\'' + k + '\')">解封</button>' + copyBtn
+        + '</td>';
+    } else {
+      tr.innerHTML = '<td style="font-family:Consolas,monospace">' + k + '</td>'
+        + '<td><span class="tag tag-ok">有效</span></td>'
+        + '<td style="text-align:right;white-space:nowrap">'
+        + '<button class="btn-red" onclick="banKey(\'' + k + '\')">封禁</button>'
+        + '<button class="btn-gray" onclick="delKey(' + i + ')" style="margin-left:6px">删除</button>' + copyBtn
+        + '</td>';
+    }
     tb.appendChild(tr);
   });
 }
@@ -118,12 +123,10 @@ function renderTable() {
 function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
 
 function copyKey(key, btn) {
-  navigator.clipboard.writeText(key).then(() => {
-    const orig = btn.textContent;
+  navigator.clipboard.writeText(key).then(function() {
     btn.textContent = "已复制";
-    setTimeout(() => btn.textContent = orig, 1200);
-  }).catch(() => {
-    // 剪贴板权限被拒时降级用临时 textarea
+    setTimeout(function() { btn.textContent = "复制"; }, 1200);
+  }).catch(function() {
     const ta = document.createElement("textarea");
     ta.value = key;
     ta.style.cssText = "position:fixed;top:-99px;left:-99px;opacity:0";
@@ -132,7 +135,7 @@ function copyKey(key, btn) {
     document.execCommand("copy");
     document.body.removeChild(ta);
     btn.textContent = "已复制";
-    setTimeout(() => btn.textContent = "复制", 1200);
+    setTimeout(function() { btn.textContent = "复制"; }, 1200);
   });
 }
 
@@ -143,7 +146,7 @@ function setBusy(b) {
 
 function genKey() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const p = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
+  const p = function() { return Array.from({length:4}, function() { return chars[Math.floor(Math.random()*chars.length)]; }).join(""); };
   document.getElementById("newKey").value = "DSPR-" + [p(),p(),p(),p()].join("-");
 }
 
@@ -158,7 +161,7 @@ async function addKey() {
   showMsg("添加成功", true);
   setBusy(true);
   try { await saveData(); }
-  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = cache.keys.filter(k => k !== key); renderTable(); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = cache.keys.filter(function(k) { return k !== key; }); renderTable(); }
   setBusy(false);
 }
 
@@ -175,7 +178,7 @@ async function banKey(key) {
 async function unbanKey(key) {
   if (!cache || busy) return;
   const old = cache.banned;
-  cache.banned = cache.banned.filter(k => k !== key);
+  cache.banned = cache.banned.filter(function(k) { return k !== key; });
   renderTable(); showMsg("已解封: " + key, true);
   setBusy(true);
   try { await saveData(); }
@@ -188,7 +191,7 @@ async function delKey(i) {
   const key = cache.keys[i];
   const oldKeys = cache.keys.slice(), oldBanned = cache.banned.slice();
   cache.keys.splice(i, 1);
-  cache.banned = cache.banned.filter(k => k !== key);
+  cache.banned = cache.banned.filter(function(k) { return k !== key; });
   renderTable(); showMsg("已删除: " + key, true);
   setBusy(true);
   try { await saveData(); }
