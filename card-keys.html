@@ -131,41 +131,47 @@ async function addKey() {
   const key = document.getElementById("newKey").value.trim().toUpperCase();
   if (!key) { showMsg("请输入卡密", false); return; }
   if (cache.keys.includes(key)) { showMsg("卡密已存在", false); return; }
-  setBusy(true); showMsg("保存中...");
-  cache.keys.push(key);
-  try { await saveData(); renderTable(); showMsg("添加成功", true); document.getElementById("newKey").value = ""; }
-  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys.pop(); }
+  cache.keys.unshift(key);   // 新卡密排在最上方
+  renderTable();
+  document.getElementById("newKey").value = "";
+  showMsg("添加成功", true);
+  setBusy(true);
+  try { await saveData(); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = cache.keys.filter(k => k !== key); renderTable(); }
   setBusy(false);
 }
 
 async function banKey(key) {
   if (!cache || busy) return;
-  setBusy(true); showMsg("保存中...");
   if (!cache.banned.includes(key)) cache.banned.push(key);
-  try { await saveData(); renderTable(); showMsg("已封禁: " + key, true); }
-  catch(e) { showMsg("保存失败: " + e.message, false); cache.banned.pop(); }
+  renderTable(); showMsg("已封禁: " + key, true);
+  setBusy(true);
+  try { await saveData(); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.banned.pop(); renderTable(); }
   setBusy(false);
 }
 
 async function unbanKey(key) {
   if (!cache || busy) return;
-  setBusy(true); showMsg("保存中...");
   const old = cache.banned;
   cache.banned = cache.banned.filter(k => k !== key);
-  try { await saveData(); renderTable(); showMsg("已解封: " + key, true); }
-  catch(e) { showMsg("保存失败: " + e.message, false); cache.banned = old; }
+  renderTable(); showMsg("已解封: " + key, true);
+  setBusy(true);
+  try { await saveData(); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.banned = old; renderTable(); }
   setBusy(false);
 }
 
 async function delKey(i) {
   if (!cache || busy) return;
-  setBusy(true); showMsg("保存中...");
   const key = cache.keys[i];
   const oldKeys = cache.keys.slice(), oldBanned = cache.banned.slice();
   cache.keys.splice(i, 1);
   cache.banned = cache.banned.filter(k => k !== key);
-  try { await saveData(); renderTable(); showMsg("已删除: " + key, true); }
-  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = oldKeys; cache.banned = oldBanned; }
+  renderTable(); showMsg("已删除: " + key, true);
+  setBusy(true);
+  try { await saveData(); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = oldKeys; cache.banned = oldBanned; renderTable(); }
   setBusy(false);
 }
 
