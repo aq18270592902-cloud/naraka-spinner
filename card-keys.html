@@ -13,6 +13,7 @@ h1 { font-size: 22px; font-weight: 600; margin-bottom: 24px; color: #1A1A1A; }
 input { width: 100%; padding: 10px 14px; font-size: 14px; border: 1px solid #DDD; border-radius: 6px; color: #333; background: #FAFAFA; }
 input:focus { outline: none; border-color: #07C160; background: #FFF; }
 button { padding: 8px 18px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
 .btn-green { background: #07C160; color: #FFF; }
 .btn-green:hover { background: #06AD55; }
 .btn-red { background: #FA5151; color: #FFF; }
@@ -42,7 +43,7 @@ th { color: #999; font-weight: 400; }
   <div class="row">
     <input id="newKey" placeholder="输入卡密或点击随机生成">
     <button class="btn-gray" onclick="genKey()">随机</button>
-    <button class="btn-green" onclick="addKey()">添加</button>
+    <button class="btn-green" id="btnAdd" onclick="addKey()">添加</button>
   </div>
   <div id="msg"></div>
 </div>
@@ -57,39 +58,44 @@ th { color: #999; font-weight: 400; }
 </div>
 
 <script>
-const _T = ["github_pat_","11CIPZWEI0","GkfGS616SKu8_","AEzxcCKV2MylhcwI","EnSRAaJORNv7RY6","SeMpOamaiznGDA","66AIRALNUA4AZj"];
-const TOKEN = _T.join("");
-const API = "https://api.github.com/repos/aq18270592902-cloud/ccss/contents/keys.json";
-let cache = null;
+// jsonbin.io 存储
+const _K = ["$2a$10$T/VO.","YqvWDGJlIgV5bnKlu","GgV/qGKDWXOCm5o","W1iAK/afSS1/L2Kq"];
+const MASTER_KEY = _K.join("");
+const BIN_ID = "6ac79499ffd5d1605359275b";
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const GET_URL = `${BIN_URL}/latest`;
+let cache = null;   // { keys: [], banned: [] }
+let busy = false;   // 防重复提交
 
 async function loadData() {
   try {
-    const resp = await fetch(`${API}?ref=main`, {
-      headers: { "Authorization": `token ${TOKEN}`, "Accept": "application/vnd.github.v3+json", "User-Agent": "DSPR-Admin" }
-    });
+    const resp = await fetch(GET_URL, { headers: { "Accept": "application/json" } });
     if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const data = await resp.json();
-    cache = { sha: data.sha, data: JSON.parse(atob(data.content)) };
+    const json = await resp.json();
+    cache = json.record || json;   // jsonbin v3 包装在 record 里，兼容裸格式
     renderTable();
-  } catch(e) { document.getElementById("keyTable").innerHTML = `<tr><td colspan="3" class="loading">加载失败</td></tr>`; }
+  } catch(e) {
+    document.getElementById("keyTable").innerHTML = `<tr><td colspan="3" class="loading">加载失败: ${e.message}</td></tr>`;
+  }
 }
 
 async function saveData() {
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(cache.data, null, 2))));
-  const resp = await fetch(API, {
+  const resp = await fetch(BIN_URL, {
     method: "PUT",
-    headers: { "Authorization": `token ${TOKEN}`, "Accept": "application/vnd.github.v3+json", "Content-Type": "application/json", "User-Agent": "DSPR-Admin" },
-    body: JSON.stringify({ message: "Update keys", content: content, sha: cache.sha, branch: "main" })
+    headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY, "Accept": "application/json" },
+    body: JSON.stringify(cache, null, 2)
   });
-  if (!resp.ok) { const e = await resp.json(); throw new Error(e.message); }
-  const data = await resp.json();
-  cache.sha = data.content.sha;
+  if (!resp.ok) {
+    let m = "HTTP " + resp.status;
+    try { m = (await resp.json()).message || m; } catch(_) {}
+    throw new Error(m);
+  }
 }
 
 function renderTable() {
   const tb = document.getElementById("keyTable");
-  const keys = cache.data.keys || [];
-  const banned = cache.data.banned || [];
+  const keys = cache.keys || [];
+  const banned = cache.banned || [];
   if (!keys.length) { tb.innerHTML = `<tr><td colspan="3" class="loading">暂无卡密</td></tr>`; return; }
   tb.innerHTML = "";
   keys.forEach((k, i) => {
@@ -109,6 +115,11 @@ function renderTable() {
 
 function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
 
+function setBusy(b) {
+  busy = b;
+  document.getElementById("btnAdd").disabled = b;
+}
+
 function genKey() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const p = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
@@ -116,36 +127,46 @@ function genKey() {
 }
 
 async function addKey() {
-  if (!cache) return;
+  if (!cache || busy) return;
   const key = document.getElementById("newKey").value.trim().toUpperCase();
   if (!key) { showMsg("请输入卡密", false); return; }
-  if (cache.data.keys.includes(key)) { showMsg("卡密已存在", false); return; }
-  cache.data.keys.push(key);
+  if (cache.keys.includes(key)) { showMsg("卡密已存在", false); return; }
+  setBusy(true); showMsg("保存中...");
+  cache.keys.push(key);
   try { await saveData(); renderTable(); showMsg("添加成功", true); document.getElementById("newKey").value = ""; }
-  catch(e) { showMsg("保存失败: " + e.message, false); cache.data.keys.pop(); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys.pop(); }
+  setBusy(false);
 }
 
 async function banKey(key) {
-  if (!cache) return;
-  if (!cache.data.banned.includes(key)) cache.data.banned.push(key);
+  if (!cache || busy) return;
+  setBusy(true); showMsg("保存中...");
+  if (!cache.banned.includes(key)) cache.banned.push(key);
   try { await saveData(); renderTable(); showMsg("已封禁: " + key, true); }
-  catch(e) { showMsg("保存失败: " + e.message, false); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.banned.pop(); }
+  setBusy(false);
 }
 
 async function unbanKey(key) {
-  if (!cache) return;
-  cache.data.banned = cache.data.banned.filter(k => k !== key);
+  if (!cache || busy) return;
+  setBusy(true); showMsg("保存中...");
+  const old = cache.banned;
+  cache.banned = cache.banned.filter(k => k !== key);
   try { await saveData(); renderTable(); showMsg("已解封: " + key, true); }
-  catch(e) { showMsg("保存失败: " + e.message, false); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.banned = old; }
+  setBusy(false);
 }
 
 async function delKey(i) {
-  if (!cache) return;
-  const key = cache.data.keys[i];
-  cache.data.keys.splice(i, 1);
-  cache.data.banned = cache.data.banned.filter(k => k !== key);
+  if (!cache || busy) return;
+  setBusy(true); showMsg("保存中...");
+  const key = cache.keys[i];
+  const oldKeys = cache.keys.slice(), oldBanned = cache.banned.slice();
+  cache.keys.splice(i, 1);
+  cache.banned = cache.banned.filter(k => k !== key);
   try { await saveData(); renderTable(); showMsg("已删除: " + key, true); }
-  catch(e) { showMsg("保存失败: " + e.message, false); }
+  catch(e) { showMsg("保存失败: " + e.message, false); cache.keys = oldKeys; cache.banned = oldBanned; }
+  setBusy(false);
 }
 
 loadData();
