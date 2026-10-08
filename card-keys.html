@@ -123,20 +123,27 @@ function renderTable() {
 function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
 
 function copyKey(key, btn) {
-  navigator.clipboard.writeText(key).then(function() {
+  // 优先用 execCommand（不需要页面聚焦），失败再尝试 clipboard API
+  const ta = document.createElement("textarea");
+  ta.value = key;
+  ta.style.cssText = "position:fixed;top:-99px;left:-99px;opacity:0";
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+
+  if (ok) {
     btn.textContent = "已复制";
     setTimeout(function() { btn.textContent = "复制"; }, 1200);
-  }).catch(function() {
-    const ta = document.createElement("textarea");
-    ta.value = key;
-    ta.style.cssText = "position:fixed;top:-99px;left:-99px;opacity:0";
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-    btn.textContent = "已复制";
-    setTimeout(function() { btn.textContent = "复制"; }, 1200);
-  });
+  } else {
+    navigator.clipboard.writeText(key).then(function() {
+      btn.textContent = "已复制";
+      setTimeout(function() { btn.textContent = "复制"; }, 1200);
+    }).catch(function() {
+      btn.textContent = "失败";
+      setTimeout(function() { btn.textContent = "复制"; }, 1200);
+    });
+  }
 }
 
 function setBusy(b) {
