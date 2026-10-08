@@ -6,7 +6,7 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: "Microsoft YaHei", sans-serif; background: #F0F0F0; color: #333; padding: 40px 20px; }
-.wrap { max-width: 700px; margin: 0 auto; }
+.wrap { max-width: 980px; margin: 0 auto; }
 h1 { font-size: 22px; font-weight: 600; margin-bottom: 24px; color: #1A1A1A; }
 .card { background: #FFF; border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 .card h2 { font-size: 14px; color: #888; margin-bottom: 14px; font-weight: 400; }
@@ -32,6 +32,8 @@ th { color: #999; font-weight: 400; }
 .msg-ok { color: #07C160; }
 .msg-err { color: #FA5151; }
 .loading { text-align: center; padding: 30px; color: #999; font-size: 14px; }
+input.note-in { width: 110px; padding: 5px 8px; font-size: 13px; background: #FFF; }
+input.note-in:focus { border-color: #07C160; }
 </style>
 </head>
 <body>
@@ -51,8 +53,8 @@ th { color: #999; font-weight: 400; }
 <div class="card">
   <h2>卡密列表</h2>
   <table>
-    <thead><tr><th>卡密</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
-    <tbody id="keyTable"><tr><td colspan="3" class="loading">加载中...</td></tr></tbody>
+    <thead><tr><th>卡密</th><th>使用电脑</th><th>备注</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+    <tbody id="keyTable"><tr><td colspan="5" class="loading">加载中...</td></tr></tbody>
   </table>
 </div>
 </div>
@@ -64,8 +66,12 @@ const MASTER_KEY = _K.join("");
 const BIN_ID = "6ac79499ffd5d1605359275b";
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 const GET_URL = `${BIN_URL}/latest`;
+// 激活信息库（私有）：桌面软件上报电脑信息，备注也存这里
+const INFO_BIN_ID = "6ac7b692ac6210605a1ff562";
+const INFO_URL = `https://api.jsonbin.io/v3/b/${INFO_BIN_ID}`;
 let cache = null;   // { keys: [], banned: [] }
 let busy = false;   // 防重复提交
+let infoCache = {}; // { 卡密: {machine, time, note} }
 
 async function loadData() {
   try {
@@ -75,7 +81,7 @@ async function loadData() {
     cache = json.record || json;   // jsonbin v3 包装在 record 里，兼容裸格式
     renderTable();
   } catch(e) {
-    document.getElementById("keyTable").innerHTML = `<tr><td colspan="3" class="loading">加载失败: ${e.message}</td></tr>`;
+    document.getElementById("keyTable").innerHTML = `<tr><td colspan="5" class="loading">加载失败: ${e.message}</td></tr>`;
   }
 }
 
@@ -92,11 +98,50 @@ async function saveData() {
   }
 }
 
+async function loadInfo() {
+  try {
+    const resp = await fetch(INFO_URL + "/latest", { headers: { "X-Master-Key": MASTER_KEY, "Accept": "application/json" } });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const json = await resp.json();
+    infoCache = ((json.record || json).info) || {};
+  } catch(e) { /* 信息库异常不阻塞卡密列表 */ }
+  renderTable();
+}
+
+async function saveInfo() {
+  const resp = await fetch(INFO_URL, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY, "Accept": "application/json" },
+    body: JSON.stringify({ info: infoCache }, null, 2)
+  });
+  if (!resp.ok) {
+    let m = "HTTP " + resp.status;
+    try { m = (await resp.json()).message || m; } catch(_) {}
+    throw new Error(m);
+  }
+}
+
+async function saveNote(inp) {
+  const key = inp.dataset.key;
+  const note = inp.value.trim();
+  const ent = infoCache[key] || {};
+  if ((ent.note || "") === note) return;
+  const old = ent.note || "";
+  infoCache[key] = Object.assign({}, ent, { note: note });
+  try {
+    await saveInfo();
+    showMsg("备注已保存", true);
+  } catch(e) {
+    showMsg("备注保存失败: " + e.message, false);
+    infoCache[key].note = old;
+  }
+}
+
 function renderTable() {
   const tb = document.getElementById("keyTable");
   const keys = cache.keys || [];
   const banned = cache.banned || [];
-  if (!keys.length) { tb.innerHTML = '<tr><td colspan="3" class="loading">暂无卡密</td></tr>'; return; }
+  if (!keys.length) { tb.innerHTML = '<tr><td colspan="5" class="loading">暂无卡密</td></tr>'; return; }
   tb.innerHTML = "";
   keys.forEach(function(k, i) {
     const isBanned = banned.indexOf(k) !== -1;
@@ -110,7 +155,13 @@ function renderTable() {
         + '<button class="btn-gray" data-action="del" data-idx="' + i + '" style="margin-left:6px">删除</button>'
         + '<button class="btn-gray" data-action="copy" data-key="' + k + '" style="margin-left:6px">复制</button>';
     }
+    const ent = infoCache[k] || {};
+    const machine = ent.machine ? ent.machine : '<span style="color:#C0C0C0">未激活</span>';
+    const mtitle = ent.time ? ' title="最近激活: ' + ent.time + '"' : '';
+    const noteEsc = (ent.note || "").replace(/"/g, "&quot;");
     tr.innerHTML = '<td style="font-family:Consolas,monospace">' + k + '</td>'
+      + '<td style="font-size:13px;color:#666;max-width:150px"' + mtitle + '>' + machine + '</td>'
+      + '<td><input class="note-in" data-key="' + k + '" value="' + noteEsc + '" placeholder="如：张三"></td>'
       + '<td><span class="tag ' + (isBanned ? 'tag-ban' : 'tag-ok') + '">' + (isBanned ? '已封禁' : '有效') + '</span></td>'
       + '<td style="text-align:right;white-space:nowrap">' + btnHtml + '</td>';
     tb.appendChild(tr);
@@ -128,6 +179,11 @@ document.getElementById("keyTable").addEventListener("click", function(e) {
   else if (action === "ban") banKey(key);
   else if (action === "unban") unbanKey(key);
   else if (action === "del") delKey(idx);
+});
+
+// 备注输入框修改后自动保存
+document.getElementById("keyTable").addEventListener("change", function(e) {
+  if (e.target.tagName === "INPUT" && e.target.classList.contains("note-in")) saveNote(e.target);
 });
 
 function showMsg(m, ok) { const el = document.getElementById("msg"); el.textContent = m; el.className = ok ? "msg-ok" : "msg-err"; }
@@ -223,6 +279,7 @@ async function delKey(i) {
 }
 
 loadData();
+loadInfo();
 </script>
 </body>
 </html>
